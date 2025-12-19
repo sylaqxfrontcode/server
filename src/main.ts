@@ -7,11 +7,9 @@
 // }
 // bootstrap();
 
-
-
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
-import { ExpressAdapter } from '@nestjs/platform-express';
+
 import express from 'express';
 
 const server = express();
