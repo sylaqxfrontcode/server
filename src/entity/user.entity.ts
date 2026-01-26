@@ -27,10 +27,10 @@ export class User {
   @Column({ type: 'varchar', length: 255 })
   password_hash: string;
 
-  @Column({ type: 'varchar', length: 15, nullable: true })
+  @Column({ type: 'varchar', length: 15, nullable: false })
   phone: string;
 
-  @Column({ type: 'varchar', length: 5, nullable: true })
+  @Column({ type: 'varchar', length: 5, nullable: false })
   countryCode: string;
 
   @Column({

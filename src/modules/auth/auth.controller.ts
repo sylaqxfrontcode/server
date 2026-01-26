@@ -4,6 +4,8 @@ import { AuthService } from './auth.service';
 import { RegisterUserDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { GmailDto } from './dto/gmail.contact.dto';
+import { ForgotPasswordDto } from './dto/forgotpassword.dto';
+import { ResetPasswordDto } from './dto/reset.password.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -24,8 +26,25 @@ export class AuthController {
   }
 
   @Public()
-  @Post('signup-by-contact')
+  @Post('signup-by-google')
   async signUpByGoogle(@Body() dto: GmailDto) {
     return this.authService.signUpByGoogle(dto);
+  }
+
+  @Public()
+  @Post('forgot-password')
+  async forgotPassword(@Body() dto: ForgotPasswordDto) {
+    const { email } = dto;
+    await this.authService.forgotPassword(email);
+    return {
+      message: 'OTP sent to registered email',
+    };
+  }
+
+  @Public()
+  @Post('reset-password')
+  async resetPassword(@Body() dto: ResetPasswordDto) {
+    const res = this.authService.resetPassword(dto);
+    return res;
   }
 }

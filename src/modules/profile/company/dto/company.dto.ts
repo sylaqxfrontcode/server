@@ -1,15 +1,34 @@
-import { IsNotEmpty, IsString } from 'class-validator';
+import { IsEmail, IsInt, IsOptional, IsString, Length } from 'class-validator';
 
-export class CompanyDto {
+export class CreateCompanyDto {
   @IsString()
-  @IsNotEmpty()
+  @Length(1, 255)
   name: string;
 
-  @IsString()
-  @IsNotEmpty()
-  work_mail: string;
+  @IsEmail()
+  @Length(1, 255)
+  companyEmail: string;
 
-  @IsNotEmpty()
+  @IsOptional()
   @IsString()
-  owner_id: number;
+  @Length(1, 26)
+  companyContactNo: string;
+
+  @IsOptional()
+  @IsString()
+  @Length(1, 10)
+  contactCountryCode: string;
+
+  @IsOptional()
+  @IsString()
+  @Length(1, 15)
+  companyType: string;
+
+  @IsOptional()
+  @IsString()
+  @Length(1, 15)
+  registrationNumber: string;
+
+  @IsInt()
+  status: number;
 }

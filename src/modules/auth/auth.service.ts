@@ -2,21 +2,27 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User, UserRole, UserStatus } from '../../entity/user.entity';
-import { RegisterUserDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import bcrypt from 'bcryptjs';
 import { JwtService } from '@nestjs/jwt';
 import { GmailDto } from './dto/gmail.contact.dto';
-
+import { NotFoundError } from 'rxjs';
+import { otpEntity } from '../../entity/otp.entity';
+import { BadRequestException } from '@nestjs/common';
+import { resetPassword } from './types/auth.type';
+import { registerUser } from './types/auth.type';
 @Injectable()
 export class AuthService {
   constructor(
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
+
+    @InjectRepository(otpEntity)
+    private readonly otpRepo: Repository<otpEntity>,
     private jwtService: JwtService,
   ) {}
 
-  async registerUser(dto: RegisterUserDto): Promise<User> {
+  async registerUser(dto: registerUser): Promise<User> {
     try {
       const salt = await bcrypt.genSalt();
       const password_hash = await bcrypt.hash(dto.password, salt);
@@ -93,5 +99,80 @@ export class AuthService {
         email: findUser.email,
       });
     }
+  }
+
+  async forgotPassword(email: string) {
+    const user = await this.userRepo.findOne({ where: { email } });
+
+    if (!user) {
+      throw new NotFoundError('User with the given email does not exist');
+    }
+
+    // Generate 6-digit OTP
+    const resetOtp = Math.floor(100000 + Math.random() * 900000).toString();
+
+    // OTP expires in 4 minutes
+    const otpExpires = Date.now() + 4 * 60 * 1000;
+
+    const otpEntity = this.otpRepo.create({
+      user_id: user.id,
+      otp_code: resetOtp,
+      otp_expires: otpExpires,
+      created_at: Date.now(),
+    });
+
+    await this.otpRepo.save(otpEntity);
+
+    // Optional: send OTP via email here
+  }
+  async resetPassword(dto: resetPassword) {
+    const { email, otp, newPassword } = dto;
+
+    // 1️⃣ Find user
+    const user = await this.userRepo.findOne({
+      where: { email: email.trim().toLowerCase() },
+    });
+
+    if (!user) {
+      throw new NotFoundError('User with the given email does not exist');
+    }
+
+    // 2️⃣ Find OTP
+    const otpRecord = await this.otpRepo.findOne({
+      where: { user_id: user.id },
+    });
+
+    if (!otpRecord) {
+      throw new NotFoundError('OTP not found for the user');
+    }
+
+    // 3️⃣ Validate OTP
+    if (String(otpRecord.otp_code) !== String(otp).trim()) {
+      throw new BadRequestException('Invalid OTP');
+    }
+
+    // 4️⃣ Validate expiry
+    if (Date.now() > Number(otpRecord.otp_expires)) {
+      throw new BadRequestException('OTP has expired');
+    }
+
+    // 5️⃣ Validate password
+    if (newPassword.length < 8) {
+      throw new BadRequestException(
+        'Password must be at least 8 characters long',
+      );
+    }
+
+    // 6️⃣ Hash & save
+    user.password_hash = await bcrypt.hash(newPassword, 10);
+
+    await this.userRepo.manager.transaction(async (manager) => {
+      await manager.save(user);
+      await manager.delete(otpEntity, { user_id: user.id });
+    });
+
+    return {
+      message: 'Password reset successful',
+    };
   }
 }
