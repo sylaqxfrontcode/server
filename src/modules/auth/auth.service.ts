@@ -1,4 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import {
+  Injectable,
+  UnauthorizedException,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User, UserRole, UserStatus } from '../../entity/user.entity';
@@ -11,6 +15,7 @@ import { otpEntity } from '../../entity/otp.entity';
 import { BadRequestException } from '@nestjs/common';
 import { resetPassword } from './types/auth.type';
 import { registerUser } from './types/auth.type';
+
 @Injectable()
 export class AuthService {
   constructor(
@@ -45,24 +50,32 @@ export class AuthService {
   }
 
   async login(dto: LoginDto) {
-    // Login logic would go here
-    const user = await this.userRepo.findOne({ where: { email: dto.email } });
+    const user = await this.userRepo.findOne({
+      where: { email: dto.email },
+    });
+
     if (!user) {
-      throw new Error('Please register first');
+      throw new NotFoundException('Please register first');
     }
+
     const isMatch = await bcrypt.compare(dto.password, user.password_hash);
 
     if (!isMatch) {
-      throw new Error('Invalid credentials');
+      throw new UnauthorizedException('Invalid credentials');
     }
 
-    const payload = { sub: user.name, email: user.email };
+    try {
+      const payload = { sub: user.name, email: user.email };
 
-    const token = await this.jwtService.signAsync(payload);
+      const token = await this.jwtService.signAsync(payload);
 
-    return {
-      access_token: token,
-    };
+      return {
+        access_token: token,
+      };
+    } catch (err) {
+      console.error('Error during login:', err);
+      throw err; // rethrow after logging
+    }
   }
 
   async signUpByGoogle(dto: GmailDto) {

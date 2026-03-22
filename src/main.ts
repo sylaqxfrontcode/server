@@ -17,17 +17,20 @@ const server = express();
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-  // If you are using /api in frontend URLs
   app.setGlobalPrefix('api');
 
-  // Enable CORS for frontend
   app.enableCors({
-    origin: 'http://localhost:3001',
+    origin: 'http://localhost:3001', // ✅ exact origin
+    credentials: true, // ✅ required for cookies
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
   });
 
-  await app.listen(process.env.PORT ?? 3000);
+  const port = process.env.PORT ?? 3000;
+
+  await app.listen(port);
+
+  console.log(`🚀 Server running on: http://localhost:${port}`);
 }
 
 bootstrap();

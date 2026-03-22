@@ -21,7 +21,7 @@ export class AuthController {
   @Public()
   @Post('login')
   async login(@Body() dto: LoginDto) {
-    // Login logic would go here
+    // Debug log to check incoming data
     return this.authService.login(dto);
   }
 
