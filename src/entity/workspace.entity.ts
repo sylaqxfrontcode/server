@@ -23,4 +23,8 @@ export class WorkSpace {
 
   @Column({ type: 'tinyint', default: 1 })
   status: number;
+  @Column({ type: 'bigint', default: 1 })
+  created_at: number;
+  @Column({ type: 'bigint', default: 1 })
+  updated_at: number;
 }

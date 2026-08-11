@@ -6,7 +6,6 @@ export interface JwtPayload {
 
 export interface resetPassword {
   email: string;
-  otp: string;
   newPassword: string;
 }
 

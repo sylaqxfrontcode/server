@@ -4,6 +4,7 @@ import { WorkSpaceService } from './workspace.service';
 import { Controller, Post, Body, Get, Req, Query, Put } from '@nestjs/common';
 import { CreateWorkSpaceDto } from './dto/CreateWorkSpace.dto';
 import { UpdateWorkSpaceDto } from './dto/UpdateWorkSpace.dto';
+
 @Controller('workspace')
 export class WorkSpaceController {
   constructor(private readonly workspaceService: WorkSpaceService) {}

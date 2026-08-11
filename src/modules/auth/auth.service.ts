@@ -9,15 +9,17 @@ import { User, UserRole, UserStatus } from '../../entity/user.entity';
 import { LoginDto } from './dto/login.dto';
 import bcrypt from 'bcryptjs';
 import { JwtService } from '@nestjs/jwt';
-import { GmailDto } from './dto/gmail.contact.dto';
 import { NotFoundError } from 'rxjs';
 import { otpEntity } from '../../entity/otp.entity';
 import { BadRequestException } from '@nestjs/common';
 import { resetPassword } from './types/auth.type';
 import { registerUser } from './types/auth.type';
+import { OAuth2Client } from 'google-auth-library';
 
 @Injectable()
 export class AuthService {
+  private client = new OAuth2Client(process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID);
+
   constructor(
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
@@ -78,39 +80,40 @@ export class AuthService {
     }
   }
 
-  async signUpByGoogle(dto: GmailDto) {
-    const user = await this.userRepo.findOne({
-      where: { email: dto.email },
-    });
-
-    const salt = await bcrypt.genSalt();
-    const password_hash = await bcrypt.hash('123456', salt);
-    if (!user) {
-      const newUser = this.userRepo.create({
-        email: dto.email,
-        name: dto.name,
-        status: UserStatus.ACTIVE,
-        role: UserRole.ADMIN,
-        password_hash: password_hash,
+  async signUpByGoogle(token: string) {
+    try {
+      const ticket = await this.client.verifyIdToken({
+        idToken: token,
+        audience: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
       });
+      const payload = ticket.getPayload();
 
-      const savedUser = await this.userRepo.save(newUser);
-      return this.jwtService.signAsync({
-        sub: savedUser.name,
-        email: savedUser.email,
-      });
-    } else {
-      const findUser = await this.userRepo.findOne({
-        where: { email: dto.email, name: dto.name },
-      });
-
-      if (!findUser) {
-        throw new Error('User not found with the provided email and name');
+      if (!payload?.email) {
+        throw new UnauthorizedException(
+          'Google authentication failed: No email found',
+        );
       }
-      return this.jwtService.signAsync({
-        sub: findUser.name,
-        email: findUser.email,
+      let user = await this.userRepo.findOne({
+        where: { email: payload.email },
       });
+      if (!user) {
+        user = this.userRepo.create({
+          email: payload.email,
+          name: payload.name || 'Google User',
+          password_hash: '', // No password for Google users
+          status: UserStatus.ACTIVE,
+          phone: '', // Optional: you can choose to leave this empty or ask for it later
+          countryCode: '', // Optional: you can choose to leave this empty or ask for it later
+        });
+        user = await this.userRepo.save(user);
+      }
+      const jwtPayload = { sub: user.name, email: user.email };
+      const jwtToken = await this.jwtService.signAsync(jwtPayload);
+      return {
+        access_token: jwtToken,
+      };
+    } catch (err: unknown) {
+      console.error('Error during Google sign-up:', err);
     }
   }
 
@@ -138,19 +141,13 @@ export class AuthService {
 
     // Optional: send OTP via email here
   }
-  async resetPassword(dto: resetPassword) {
-    const { email, otp, newPassword } = dto;
-
-    // 1️⃣ Find user
-    const user = await this.userRepo.findOne({
-      where: { email: email.trim().toLowerCase() },
-    });
+  async verifyOtp(email: string, otp: string) {
+    const user = await this.userRepo.findOne({ where: { email } });
 
     if (!user) {
-      throw new NotFoundError('User with the given email does not exist');
+      throw new NotFoundError('User not found');
     }
 
-    // 2️⃣ Find OTP
     const otpRecord = await this.otpRepo.findOne({
       where: { user_id: user.id },
     });
@@ -159,14 +156,34 @@ export class AuthService {
       throw new NotFoundError('OTP not found for the user');
     }
 
-    // 3️⃣ Validate OTP
+    // Check expiry first (better UX + security)
+    if (Date.now() > Number(otpRecord.otp_expires)) {
+      throw new BadRequestException('OTP has expired');
+    }
+
+    // Validate OTP
     if (String(otpRecord.otp_code) !== String(otp).trim()) {
       throw new BadRequestException('Invalid OTP');
     }
 
-    // 4️⃣ Validate expiry
-    if (Date.now() > Number(otpRecord.otp_expires)) {
-      throw new BadRequestException('OTP has expired');
+    // ✅ Invalidate OTP after successful verification
+    await this.otpRepo.delete({ id: otpRecord.id });
+
+    return {
+      verified: true,
+      message: 'OTP verified successfully',
+    };
+  }
+  async resetPassword(dto: resetPassword) {
+    const { email, newPassword } = dto;
+
+    // 1️⃣ Find user
+    const user = await this.userRepo.findOne({
+      where: { email: email.trim().toLowerCase() },
+    });
+
+    if (!user) {
+      throw new NotFoundError('User with the given email does not exist');
     }
 
     // 5️⃣ Validate password

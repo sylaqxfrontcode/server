@@ -3,7 +3,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthModule } from './modules/auth/auth.module';
-
+import { DocumentModule } from './modules/documents/document.module';
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
@@ -21,6 +21,7 @@ import { AuthModule } from './modules/auth/auth.module';
     }),
     AuthModule,
     WorkspaceModule,
+    DocumentModule,
   ],
 })
 export class AppModule {}

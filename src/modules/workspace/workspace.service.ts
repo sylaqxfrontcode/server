@@ -12,7 +12,12 @@ export class WorkSpaceService {
   ) {}
   async createNewWorkspace(data: CreateWorkspaces) {
     const newWorkspace = this.workSpaceRepo.create(data);
-    const res = await this.workSpaceRepo.save(newWorkspace);
+    const now = Math.floor(Date.now() / 1000); // current timestamp in seconds
+    const res = await this.workSpaceRepo.save({
+      ...newWorkspace,
+      created_at: now,
+      updated_at: now,
+    });
     if (!res) {
       throw new Error('Failed to create workspace');
     }
@@ -44,6 +49,7 @@ export class WorkSpaceService {
       throw new Error('Workspace not found');
     }
     workspace.status = status;
+    workspace.updated_at = Math.floor(Date.now() / 1000); // update timestamp
     const res = await this.workSpaceRepo.save(workspace);
     if (!res) {
       throw new Error('Failed to update workspace status');

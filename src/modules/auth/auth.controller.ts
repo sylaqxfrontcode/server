@@ -3,10 +3,9 @@ import { Public } from '../../common/decorators/public.decorator';
 import { AuthService } from './auth.service';
 import { RegisterUserDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
-import { GmailDto } from './dto/gmail.contact.dto';
 import { ForgotPasswordDto } from './dto/forgotpassword.dto';
 import { ResetPasswordDto } from './dto/reset.password.dto';
-
+import { VerifyOtpDto } from './dto/verify.otp';
 @Controller('auth')
 export class AuthController {
   // Controller methods would go here
@@ -26,9 +25,9 @@ export class AuthController {
   }
 
   @Public()
-  @Post('signup-by-google')
-  async signUpByGoogle(@Body() dto: GmailDto) {
-    return this.authService.signUpByGoogle(dto);
+  @Post('google')
+  async signUpByGoogle(@Body('token') token: string) {
+    return this.authService.signUpByGoogle(token);
   }
 
   @Public()
@@ -39,6 +38,11 @@ export class AuthController {
     return {
       message: 'OTP sent to registered email',
     };
+  }
+  @Public()
+  @Post('verify-otp')
+  async verifyOtp(@Body() dto: VerifyOtpDto) {
+    return this.authService.verifyOtp(dto.email, dto.otp);
   }
 
   @Public()
