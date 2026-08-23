@@ -12,7 +12,7 @@ import { otpEntity } from '../../entity/otp.entity';
     TypeOrmModule.forFeature([User, otpEntity]),
     PassportModule,
     JwtModule.register({
-      secret: process.env.JWT_SECRET || 'defaultSecretKey',
+      secret: process.env.JWT_SECRET || process.env.Jwt_SECRET || 'defaultSecretKey',
       signOptions: { expiresIn: '23h' },
     }),
   ],

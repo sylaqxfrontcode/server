@@ -4,6 +4,8 @@ import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthModule } from './modules/auth/auth.module';
 import { DocumentModule } from './modules/documents/document.module';
+import { CompanyModule } from './modules/profile/company/company.module';
+import { OnboardingModule } from './modules/onboarding/onboarding.module';
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
@@ -22,6 +24,8 @@ import { DocumentModule } from './modules/documents/document.module';
     AuthModule,
     WorkspaceModule,
     DocumentModule,
+    CompanyModule,
+    OnboardingModule,
   ],
 })
 export class AppModule {}

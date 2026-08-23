@@ -9,12 +9,12 @@ import { User, UserRole, UserStatus } from '../../entity/user.entity';
 import { LoginDto } from './dto/login.dto';
 import bcrypt from 'bcryptjs';
 import { JwtService } from '@nestjs/jwt';
-import { NotFoundError } from 'rxjs';
 import { otpEntity } from '../../entity/otp.entity';
 import { BadRequestException } from '@nestjs/common';
 import { resetPassword } from './types/auth.type';
 import { registerUser } from './types/auth.type';
 import { OAuth2Client } from 'google-auth-library';
+import { sendOtpEmail } from '../../helper/mail/otp/otp';
 
 @Injectable()
 export class AuthService {
@@ -67,12 +67,13 @@ export class AuthService {
     }
 
     try {
-      const payload = { sub: user.name, email: user.email };
+      const payload = { sub: user.id, email: user.email, role: user.role };
 
       const token = await this.jwtService.signAsync(payload);
 
       return {
         access_token: token,
+        user: this.toPublicUser(user),
       };
     } catch (err) {
       console.error('Error during login:', err);
@@ -107,13 +108,15 @@ export class AuthService {
         });
         user = await this.userRepo.save(user);
       }
-      const jwtPayload = { sub: user.name, email: user.email };
+      const jwtPayload = { sub: user.id, email: user.email, role: user.role };
       const jwtToken = await this.jwtService.signAsync(jwtPayload);
       return {
         access_token: jwtToken,
+        user: this.toPublicUser(user),
       };
     } catch (err: unknown) {
       console.error('Error during Google sign-up:', err);
+      throw new UnauthorizedException('Google authentication failed');
     }
   }
 
@@ -121,7 +124,7 @@ export class AuthService {
     const user = await this.userRepo.findOne({ where: { email } });
 
     if (!user) {
-      throw new NotFoundError('User with the given email does not exist');
+      throw new NotFoundException('User with the given email does not exist');
     }
 
     // Generate 6-digit OTP
@@ -138,14 +141,13 @@ export class AuthService {
     });
 
     await this.otpRepo.save(otpEntity);
-
-    // Optional: send OTP via email here
+    await sendOtpEmail(user.email, resetOtp);
   }
   async verifyOtp(email: string, otp: string) {
     const user = await this.userRepo.findOne({ where: { email } });
 
     if (!user) {
-      throw new NotFoundError('User not found');
+      throw new NotFoundException('User not found');
     }
 
     const otpRecord = await this.otpRepo.findOne({
@@ -153,7 +155,7 @@ export class AuthService {
     });
 
     if (!otpRecord) {
-      throw new NotFoundError('OTP not found for the user');
+      throw new NotFoundException('OTP not found for the user');
     }
 
     // Check expiry first (better UX + security)
@@ -166,16 +168,13 @@ export class AuthService {
       throw new BadRequestException('Invalid OTP');
     }
 
-    // ✅ Invalidate OTP after successful verification
-    await this.otpRepo.delete({ id: otpRecord.id });
-
     return {
       verified: true,
       message: 'OTP verified successfully',
     };
   }
   async resetPassword(dto: resetPassword) {
-    const { email, newPassword } = dto;
+    const { email, otp, newPassword } = dto;
 
     // 1️⃣ Find user
     const user = await this.userRepo.findOne({
@@ -183,7 +182,14 @@ export class AuthService {
     });
 
     if (!user) {
-      throw new NotFoundError('User with the given email does not exist');
+      throw new NotFoundException('User with the given email does not exist');
+    }
+
+    const otpRecord = await this.otpRepo.findOne({
+      where: { user_id: user.id, otp_code: String(otp).trim() },
+    });
+    if (!otpRecord || Date.now() > Number(otpRecord.otp_expires)) {
+      throw new BadRequestException('OTP is invalid or has expired');
     }
 
     // 5️⃣ Validate password
@@ -203,6 +209,29 @@ export class AuthService {
 
     return {
       message: 'Password reset successful',
+    };
+  }
+
+  async registerAndAuthenticate(dto: registerUser) {
+    const user = await this.registerUser(dto);
+    const access_token = await this.jwtService.signAsync({
+      sub: user.id,
+      email: user.email,
+      role: user.role,
+    });
+
+    return { access_token, user: this.toPublicUser(user) };
+  }
+
+  private toPublicUser(user: User) {
+    return {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      phone: user.phone,
+      countryCode: user.countryCode,
+      status: user.status,
+      role: user.role,
     };
   }
 }

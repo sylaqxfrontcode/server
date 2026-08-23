@@ -3,10 +3,7 @@ import { IsNotEmpty, IsNumber, IsOptional, IsString } from 'class-validator';
 export class CreateWorkSpaceDto {
   @IsNotEmpty()
   @IsNumber()
-  Company_id: number;
-  @IsNotEmpty()
-  @IsNumber()
-  user_id: number;
+  company_id: number;
   @IsNotEmpty()
   @IsString()
   name: string;

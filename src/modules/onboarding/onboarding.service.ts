@@ -59,8 +59,11 @@ export class OnboardingService {
 
       const invite = this.onboardingRepo.create({
         invite_id: user_id,
+        new_user_id: createdUser.id,
+        name: payload.name,
         new_user_email: payload.new_user_email,
         company_id: payload.company_id,
+        status: 'pending',
       });
 
       const permissions = payload.permissions;
@@ -90,7 +93,7 @@ export class OnboardingService {
   async delteUser(user_id: number) {
     const user = await this.userRepo.findOne({ where: { id: user_id } });
     if (!user) {
-      new NotFoundException();
+      throw new NotFoundException('User not found');
     }
     await this.userRepo.delete({ id: user_id });
     return { message: 'User deleted successfully' };
@@ -99,7 +102,7 @@ export class OnboardingService {
     const user = await this.userRepo.findOne({ where: { id: user_id } });
 
     if (!user) {
-      new NotFoundException('user not found');
+      throw new NotFoundException('User not found');
     }
 
     const invite_user = await this.onboardingRepo.findOne({

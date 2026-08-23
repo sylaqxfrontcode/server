@@ -12,11 +12,8 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     @InjectRepository(User)
     private userRepo: Repository<User>,
   ) {
-    const SECRET_KEY = process.env.Jwt_SECRET;
-
-    if (!SECRET_KEY) {
-      throw new Error('JWT_SECRET is not defined in environment variables');
-    }
+    const SECRET_KEY =
+      process.env.JWT_SECRET || process.env.Jwt_SECRET || 'defaultSecretKey';
 
     const options: StrategyOptions = {
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),

@@ -17,8 +17,3 @@ export const mailConfig: MailConfig = {
   fromEmail: process.env.SMTP_FROM_EMAIL || '',
 };
 
-if (!mailConfig.host || !mailConfig.user || !mailConfig.password) {
-  throw new Error(
-    'SMTP configuration is incomplete. Please check environment variables.',
-  );
-}

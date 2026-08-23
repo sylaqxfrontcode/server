@@ -32,18 +32,22 @@ export class WorkSpaceService {
     });
     return workSpaces;
   }
-  async getWorkSpaceByID(workspace_id: number) {
+  async getWorkSpaceByID(workspace_id: number, user_id: number) {
     const workspace = await this.workSpaceRepo.findOne({
-      where: { workspace_id: workspace_id },
+      where: { workspace_id, user_id },
     });
     if (!workspace) {
       throw new Error('Workspace not found');
     }
     return workspace;
   }
-  async updateWorkspaceStatus(workspace_id: number, status: number) {
+  async updateWorkspaceStatus(
+    workspace_id: number,
+    status: number,
+    user_id: number,
+  ) {
     const workspace = await this.workSpaceRepo.findOne({
-      where: { workspace_id: workspace_id },
+      where: { workspace_id, user_id },
     });
     if (!workspace) {
       throw new Error('Workspace not found');

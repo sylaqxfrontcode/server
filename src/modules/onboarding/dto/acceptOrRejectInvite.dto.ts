@@ -1,10 +1,10 @@
-import { IsNotEmpty, IsNumber } from 'class-validator';
+import { IsNotEmpty, IsNumber, IsString } from 'class-validator';
 
 export class acceptOrRejectInviteDto {
   @IsNotEmpty()
   @IsNumber()
   invite_id: number;
   @IsNotEmpty()
-  @IsNumber()
+  @IsString()
   status: string;
 }
